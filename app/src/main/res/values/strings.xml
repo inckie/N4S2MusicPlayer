@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">N4SPlayer</string>
+    <string name="btn_play">Play</string>
+    <string name="btn_stop">Stop</string>
+</resources>
