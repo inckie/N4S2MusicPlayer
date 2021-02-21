@@ -10,7 +10,7 @@ static inline LONG Clip16BitSample(LONG sample) {
     if (sample > 32767)
         return 32767;
     else if (sample < -32768)
-        return (-32768);
+        return -32768;
     else
         return sample;
 }
@@ -138,7 +138,7 @@ Java_com_damn_n4splayer_ADPCMDecoder_decode(JNIEnv *env, jclass clazz, jbyteArra
     jboolean isCopy;
     auto bytes = env->GetByteArrayElements(block, &isCopy);
     const ASFChunkHeader& ch = *(ASFChunkHeader*)bytes;
-    const auto result = decode_EAADPCM((const BYTE*)bytes + 12/*sizeof(ASFChunkHeader)*/, ch);
+    const auto& result = decode_EAADPCM((const BYTE*)bytes + 12/*sizeof(ASFChunkHeader)*/, ch);
     env->ReleaseByteArrayElements(block, bytes, JNI_ABORT);
     auto array = env->NewShortArray(result.size());
     env->SetShortArrayRegion(array, 0, result.size(), &result[0]);
