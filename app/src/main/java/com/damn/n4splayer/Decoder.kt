@@ -95,7 +95,7 @@ object Decoder {
     }
 
     @ExperimentalUnsignedTypes
-    private fun StreamInput.readByteArray(count: Int): ByteArray {
+    fun StreamInput.readByteArray(count: Int): ByteArray {
         val res = ByteArray(count)
         this.readBytes(res)
         return res
@@ -135,7 +135,7 @@ object Decoder {
 
     @ExperimentalUnsignedTypes
     class SCHlBlock(ifs: StreamInput) {
-        private val blocks: List<ByteArray>
+        val blocks: List<ByteArray>
         init {
             val hdrFile = ASFBlockHeader(ifs)
             val phHeader = PTHeader(ifs)
