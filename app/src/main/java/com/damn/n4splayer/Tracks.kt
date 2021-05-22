@@ -18,7 +18,7 @@ fun parseTrack(
     contentResolver: ContentResolver,
     track: Track
 ): Pair<MapDecoder.MapFile, MutableList<List<ByteArray>>> {
-    val map = contentResolver.openInputStream(track.map)!!
+    val map = contentResolver.openInputStream(track.map!!)!!
         .use { MapDecoder.load(it.toBinaryBufferedStream()) }
     val sections = mutableListOf<List<ByteArray>>()
     try {
@@ -38,10 +38,8 @@ fun loadTracks(childDocuments: List<DocumentFile>): MutableList<Track> {
     val muss = collectFiles(childDocuments, "mus")
     val maps = collectFiles(childDocuments, "map")
     val tracks = mutableListOf<Track>()
-    maps.forEach {
-        muss[it.key]?.let { mus ->
-            tracks.add(Track(it.key, mus, it.value))
-        }
-    }
+    tracks.addAll(muss.map {
+        (Track(it.key, it.value, maps[it.key]))
+    })
     return tracks
 }

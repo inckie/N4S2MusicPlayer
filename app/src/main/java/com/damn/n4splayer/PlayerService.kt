@@ -8,8 +8,11 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import com.damn.n4splayer.playback.IPlayer
 import com.damn.n4splayer.playback.InteractivePlayer
+import com.damn.n4splayer.playback.LinearPlayer
 import com.damn.n4splayer.ui.MainActivity
+import loggersoft.kotlin.streams.toBinaryBufferedStream
 
 
 class PlayerService : Service() {
@@ -35,9 +38,14 @@ class PlayerService : Service() {
             return START_NOT_STICKY
         }
         startForeground(NOTIFICATION_ID, buildNotification(track.name))
-        val (map, sections) = parseTrack(contentResolver, track)
         player?.stop()
-        player = InteractivePlayer(map, sections).apply {
+        player = when (track.map) {
+            null -> LinearPlayer(contentResolver.openInputStream(track.track)!!)
+            else -> {
+                val (map, sections) = parseTrack(contentResolver, track)
+                InteractivePlayer(map, sections)
+            }
+        }.apply {
             play()
         }
 
@@ -94,7 +102,7 @@ class PlayerService : Service() {
             get() = this@LocalBinder
     }
 
-    private var player: InteractivePlayer? = null
+    private var player: IPlayer? = null
     private val mBinder: IBinder = LocalBinder()
 
     override fun onBind(intent: Intent): IBinder = mBinder

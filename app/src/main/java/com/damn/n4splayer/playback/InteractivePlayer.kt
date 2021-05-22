@@ -8,15 +8,14 @@ import com.damn.n4splayer.decoding.ADPCMDecoder
 import com.damn.n4splayer.decoding.Decoder
 import com.damn.n4splayer.decoding.MapDecoder
 
-@ExperimentalUnsignedTypes
 class InteractivePlayer(
     private val map: MapDecoder.MapFile,
     private val sections: List<List<ByteArray>>
-) {
+) : IPlayer {
 
     private var thread: Thread? = null
 
-    fun play() {
+    override fun play() {
         stop()
         thread = Thread {
             loop()
@@ -26,13 +25,14 @@ class InteractivePlayer(
         }
     }
 
-    fun stop() {
+    override fun stop() {
         thread?.apply {
             interrupt()
             join()
         }
     }
 
+    @ExperimentalUnsignedTypes
     private fun loop() {
         try {
             val minBufferSize = AudioTrack.getMinBufferSize(
@@ -62,8 +62,12 @@ class InteractivePlayer(
         }
     }
 
+    @ExperimentalUnsignedTypes
     private fun nextSectionIdx(section: MapDecoder.Section): Int =
-        section.section.msdRecords[1].bNextSection
+        if(section.section.bNumRecords > 1)
+            section.section.msdRecords[1].bNextSection
+        else
+            section.section.msdRecords[0].bNextSection
 
     companion object {
         private const val TAG: String = "InteractivePlayer"

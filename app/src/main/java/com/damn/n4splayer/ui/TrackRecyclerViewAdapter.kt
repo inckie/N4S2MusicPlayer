@@ -1,6 +1,7 @@
 package com.damn.n4splayer.ui
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LiveData
@@ -43,6 +44,7 @@ class TrackRecyclerViewAdapter(
 
         fun bind(item: Track) {
             binding.content.text = item.name
+            binding.imgInteractive.visibility = if(null != item.map) View.VISIBLE else View.GONE
             binding.root.setOnClickListener { selectListener(item) }
         }
     }

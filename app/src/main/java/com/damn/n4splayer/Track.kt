@@ -8,5 +8,5 @@ import android.os.Parcelable
 data class Track(
     val name: String,
     val track: Uri,
-    val map: Uri
+    val map: Uri?
 ) : Parcelable
