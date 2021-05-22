@@ -8,6 +8,7 @@ import com.damn.n4splayer.decoding.ADPCMDecoder
 import com.damn.n4splayer.decoding.Decoder
 import com.damn.n4splayer.decoding.MapDecoder
 
+@ExperimentalUnsignedTypes
 class InteractivePlayer(
     private val map: MapDecoder.MapFile,
     private val sections: List<List<ByteArray>>
@@ -48,7 +49,7 @@ class InteractivePlayer(
                 var section = map.sections[map.startSection]
                 while (!Thread.interrupted()) {
                     for (block in sections[map.sections.indexOf(section)]) {
-                        if(Thread.interrupted())
+                        if (Thread.interrupted())
                             return
                         val bytes = ADPCMDecoder.decode(block)
                         track.write(bytes, 0, bytes.size)

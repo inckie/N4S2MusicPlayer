@@ -14,6 +14,11 @@ import com.damn.n4splayer.ui.MainActivity
 
 class PlayerService : Service() {
 
+    override fun onCreate() {
+        super.onCreate()
+        createChannels()
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
         if (null != intent) {
@@ -25,13 +30,13 @@ class PlayerService : Service() {
         }
 
         val track = intent?.getParcelableExtra<Track>(ARG_TRACK)
-        if(null == track){
+        if (null == track) {
             stopSelf()
             return START_NOT_STICKY
         }
-        createChannels()
-        startForeground(NOTIFICATION_ID, buildNotification())
+        startForeground(NOTIFICATION_ID, buildNotification(track.name))
         val (map, sections) = parseTrack(contentResolver, track)
+        player?.stop()
         player = InteractivePlayer(map, sections).apply {
             play()
         }
@@ -43,10 +48,11 @@ class PlayerService : Service() {
         player?.stop()
         super.onDestroy()
     }
+
     private fun createChannels() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val defaultChannel = NotificationChannel(
-            sCHANNEL_DEFAULT,
+            sCHANNEL_PLAYER,
             getString(R.string.notification_channel),
             NotificationManager.IMPORTANCE_HIGH
         )
@@ -55,13 +61,15 @@ class PlayerService : Service() {
         NotificationManagerCompat.from(this).createNotificationChannel(defaultChannel)
     }
 
-    private fun buildNotification(): Notification {
-        val builder: NotificationCompat.Builder = NotificationCompat.Builder(this, sCHANNEL_DEFAULT)
-        builder.setOngoing(true)
-        builder.setContentTitle(getString(R.string.app_name))
-        builder.setSmallIcon(R.mipmap.ic_launcher)
-        builder.setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-        builder.setOnlyAlertOnce(true)
+    private fun buildNotification(name: String): Notification {
+        val builder = NotificationCompat.Builder(this, sCHANNEL_PLAYER).apply {
+            setOngoing(true)
+            setContentTitle(getString(R.string.app_name))
+            setContentText(name)
+            setSmallIcon(R.mipmap.ic_launcher)
+            setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            setOnlyAlertOnce(true)
+        }
 
         val intent = Intent(this, MainActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -78,7 +86,6 @@ class PlayerService : Service() {
             0
         )
         builder.addAction(R.drawable.ic_baseline_stop_24, getString(R.string.btn_stop), stopIntent)
-
         return builder.build()
     }
 
@@ -104,7 +111,7 @@ class PlayerService : Service() {
         }
 
         private const val NOTIFICATION_ID = 1
-        private const val sCHANNEL_DEFAULT = "CHANNEL_DEFAULT"
+        private const val sCHANNEL_PLAYER = "CHANNEL_DEFAULT"
         private const val CMD_NAME = "CMD_NAME"
         private const val CMD_STOP = "CMD_STOP"
 

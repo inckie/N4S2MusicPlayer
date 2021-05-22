@@ -1,121 +1,96 @@
 package com.damn.n4splayer.ui
 
-import com.damn.n4splayer.decoding.Decoder
 import android.app.Activity
 import android.content.Intent
-import android.media.AudioFormat
-import android.media.AudioManager
-import android.media.AudioTrack
+import android.net.Uri
 import android.os.Bundle
 import android.view.View
-import android.widget.Button
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.documentfile.provider.DocumentFile
-import com.damn.n4splayer.*
-import com.damn.n4splayer.playback.CloseableAudioTrack
-import com.damn.n4splayer.playback.InteractivePlayer
-import java.io.InputStream
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.lifecycleScope
+import androidx.preference.PreferenceManager
+import com.damn.n4splayer.R
+import com.damn.n4splayer.Track
+import com.damn.n4splayer.loadTracks
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 
 class MainActivity : AppCompatActivity() {
 
-    private var btn: Button? = null
+    private val mTracks: MutableLiveData<List<Track>> = MutableLiveData()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        btn = findViewById(R.id.btn_toggle_playback)
         findViewById<View>(R.id.btn_open_directory).setOnClickListener { openDirectory() }
-        toReady()
+        sharedPreferences()
+            .getString(PREF_KEY_DIR, null)?.let {
+                reloadTrack(Uri.parse(it))
+            }
     }
 
     private fun openDirectory() {
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+        val intent =
+            Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).setFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
         startActivityForResult(intent, OPEN_DIRECTORY_REQUEST_CODE)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         when (requestCode) {
-            PICK_FILE_RESULT_CODE -> if (resultCode == -1) {
-                data?.data?.let {
-                    contentResolver.openInputStream(it)?.let { stream: InputStream ->
-                        val player = PlayerRunnable(stream)
-                        Thread(player, it.lastPathSegment ?: "").start()
-                    }
-                }
-            }
             OPEN_DIRECTORY_REQUEST_CODE -> {
                 if (resultCode != Activity.RESULT_OK)
                     return
                 val directoryUri = data?.data ?: return
-                val documentsTree = DocumentFile.fromTreeUri(application, directoryUri) ?: return
-                val childDocuments =
-                    documentsTree.listFiles().filter { it.isFile && null != it.name }
-                val tracks = loadTracks(childDocuments)
-                tracks.firstOrNull { it.name.contains("himtech", true) }?.let {
-                    playTrack(it)
-                }
+                grantUriPermission(
+                    packageName,
+                    directoryUri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+                contentResolver.takePersistableUriPermission(
+                    directoryUri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+                reloadTrack(directoryUri)
+                sharedPreferences()
+                    .edit()
+                    .putString(PREF_KEY_DIR, directoryUri.toString())
+                    .apply()
             }
         }
     }
 
-    private fun playTrack(track: Track) {
-        PlayerService.play(this, track)
-    }
+    private fun sharedPreferences() =
+        PreferenceManager.getDefaultSharedPreferences(applicationContext)
 
-    // temporary ugly class (does not handle activity lifecycle, hacky, and so on)
-    inner class PlayerRunnable(private val stream: InputStream) : Runnable {
-
-        override fun run() {
+    private fun reloadTrack(directoryUri: Uri) {
+        lifecycleScope.launch(Dispatchers.Default) {
             try {
-                Decoder.CloseableIterator(stream).use { stream ->
-                    val minBufferSize = AudioTrack.getMinBufferSize(
-                        Decoder.SampleRate,
-                        AudioFormat.CHANNEL_OUT_STEREO,
-                        AudioFormat.ENCODING_PCM_16BIT
-                    )
-                    CloseableAudioTrack(
-                        AudioManager.STREAM_MUSIC, Decoder.SampleRate,
-                        AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT,
-                        minBufferSize, AudioTrack.MODE_STREAM
-                    ).use { track: CloseableAudioTrack ->
-                        track.play()
-                        var isRunning = true
-                        btn?.post {
-                            btn?.setOnClickListener { isRunning = false }
-                            btn?.setText(R.string.btn_stop)
-                        }
-                        stream.forEach {
-                            it.forEach {
-                                if (!isRunning) {
-                                    return
-                                }
-                                track.write(it, 0, it.size)
-                            }
-                        }
-                    }
+                DocumentFile.fromTreeUri(application, directoryUri)?.apply {
+                    val childDocuments = listFiles().filter { it.isFile && null != it.name }
+                    val tracks = loadTracks(childDocuments)
+                    mTracks.postValue(tracks)
                 }
-            } finally {
-                btn?.post { toReady() }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Toast.makeText(
+                    this@MainActivity,
+                    "Failed to load tracks: " + e.message,
+                    Toast.LENGTH_LONG
+                ).show()
             }
         }
     }
 
-    private fun toReady() {
-        btn?.setText(R.string.btn_play)
-        btn?.setOnClickListener {
-            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                addCategory(Intent.CATEGORY_OPENABLE)
-                type = "*/*"
-            }
-            startActivityForResult(intent, PICK_FILE_RESULT_CODE)
-        }
-    }
+    fun getTracks(): LiveData<List<Track>> = mTracks
 
     companion object {
-        const val PICK_FILE_RESULT_CODE = 1
         private const val OPEN_DIRECTORY_REQUEST_CODE = 101
+        private const val PREF_KEY_DIR = "tracksDir"
 
         init {
             System.loadLibrary("native-lib")
