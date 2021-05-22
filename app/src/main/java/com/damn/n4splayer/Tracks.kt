@@ -3,6 +3,8 @@ package com.damn.n4splayer
 import android.content.ContentResolver
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
+import com.damn.n4splayer.decoding.Decoder
+import com.damn.n4splayer.decoding.MapDecoder
 import loggersoft.kotlin.streams.toBinaryBufferedStream
 import java.io.EOFException
 

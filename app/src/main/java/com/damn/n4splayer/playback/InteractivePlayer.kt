@@ -1,9 +1,12 @@
-package com.damn.n4splayer
+package com.damn.n4splayer.playback
 
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
 import android.util.Log
+import com.damn.n4splayer.decoding.ADPCMDecoder
+import com.damn.n4splayer.decoding.Decoder
+import com.damn.n4splayer.decoding.MapDecoder
 
 class InteractivePlayer(
     private val map: MapDecoder.MapFile,

@@ -1,4 +1,5 @@
-import com.damn.n4splayer.ADPCMDecoder
+package com.damn.n4splayer.decoding
+
 import loggersoft.kotlin.streams.ByteOrder
 import loggersoft.kotlin.streams.StreamInput
 import loggersoft.kotlin.streams.StringEncoding
@@ -149,7 +150,7 @@ object Decoder {
             blocks = result
         }
 
-        fun decode(): List<ShortArray> = blocks.map {ADPCMDecoder.decode(it) }
+        fun decode(): List<ShortArray> = blocks.map { ADPCMDecoder.decode(it) }
     }
 
     @ExperimentalUnsignedTypes

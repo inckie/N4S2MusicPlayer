@@ -134,7 +134,7 @@ static std::vector<short> decode_EAADPCM(const BYTE* inputBuffer, const ASFChunk
 
 extern "C"
 JNIEXPORT jshortArray JNICALL
-Java_com_damn_n4splayer_ADPCMDecoder_decode(JNIEnv *env, jclass clazz, jbyteArray block) {
+Java_com_damn_n4splayer_decoding_ADPCMDecoder_decode(JNIEnv *env, jclass clazz, jbyteArray block) {
     jboolean isCopy;
     auto bytes = env->GetByteArrayElements(block, &isCopy);
     const ASFChunkHeader& ch = *(ASFChunkHeader*)bytes;

@@ -1,4 +1,4 @@
-package com.damn.n4splayer
+package com.damn.n4splayer.playback
 
 import android.media.AudioTrack
 import java.io.Closeable

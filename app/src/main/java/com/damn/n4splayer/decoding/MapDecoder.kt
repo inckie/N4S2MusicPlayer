@@ -1,6 +1,6 @@
-package com.damn.n4splayer
+package com.damn.n4splayer.decoding
 
-import Decoder.readByteArray
+import com.damn.n4splayer.decoding.Decoder.readByteArray
 import loggersoft.kotlin.streams.ByteOrder
 import loggersoft.kotlin.streams.StreamInput
 import loggersoft.kotlin.streams.StringEncoding

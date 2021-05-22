@@ -1,6 +1,6 @@
-package com.damn.n4splayer
+package com.damn.n4splayer.ui
 
-import Decoder
+import com.damn.n4splayer.decoding.Decoder
 import android.app.Activity
 import android.content.Intent
 import android.media.AudioFormat
@@ -11,7 +11,9 @@ import android.view.View
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import androidx.documentfile.provider.DocumentFile
-import loggersoft.kotlin.streams.toBinaryBufferedStream
+import com.damn.n4splayer.*
+import com.damn.n4splayer.playback.CloseableAudioTrack
+import com.damn.n4splayer.playback.InteractivePlayer
 import java.io.InputStream
 
 
@@ -59,14 +61,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun playTrack(track: Track) {
-        val (map, sections) = parseTrack(contentResolver, track)
-        val player = InteractivePlayer(map, sections)
-        player.play()
-        btn?.setOnClickListener {
-            player.stop()
-            btn?.post { toReady() }
-        }
-        btn?.setText(R.string.btn_stop)
+        PlayerService.play(this, track)
     }
 
     // temporary ugly class (does not handle activity lifecycle, hacky, and so on)
