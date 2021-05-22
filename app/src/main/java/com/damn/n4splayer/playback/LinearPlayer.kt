@@ -6,28 +6,10 @@ import android.media.AudioTrack
 import com.damn.n4splayer.decoding.Decoder
 import java.io.InputStream
 
-class LinearPlayer(private val stream: InputStream) : IPlayer {
+class LinearPlayer(private val stream: InputStream) : BasePlayer() {
 
-    private var thread: Thread? = null
-
-    override fun play() {
-        stop()
-        thread = Thread {
-            loop()
-            thread = null
-        }.apply {
-            start()
-        }
-    }
-
-    override fun stop() {
-        thread?.apply {
-            interrupt()
-            join()
-        }
-    }
-
-    private fun loop() {
+    @ExperimentalUnsignedTypes
+    override fun loop() {
         try {
             Decoder.CloseableIterator(stream).use { stream ->
                 val minBufferSize = AudioTrack.getMinBufferSize(

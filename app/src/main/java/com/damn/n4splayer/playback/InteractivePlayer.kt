@@ -11,29 +11,10 @@ import com.damn.n4splayer.decoding.MapDecoder
 class InteractivePlayer(
     private val map: MapDecoder.MapFile,
     private val sections: List<List<ByteArray>>
-) : IPlayer {
-
-    private var thread: Thread? = null
-
-    override fun play() {
-        stop()
-        thread = Thread {
-            loop()
-            thread = null
-        }.apply {
-            start()
-        }
-    }
-
-    override fun stop() {
-        thread?.apply {
-            interrupt()
-            join()
-        }
-    }
+) : BasePlayer() {
 
     @ExperimentalUnsignedTypes
-    private fun loop() {
+    override fun loop() {
         try {
             val minBufferSize = AudioTrack.getMinBufferSize(
                 Decoder.SampleRate,
