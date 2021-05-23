@@ -15,6 +15,8 @@ import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
 import android.widget.Toast
+import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.media.app.NotificationCompat.*
@@ -63,22 +65,17 @@ class PlayerService : Service() {
                 notification.apply {
                     clearActions()
                     addAction(
-                        NotificationCompat.Action(
-                            R.drawable.ic_baseline_stop_24, getString(R.string.btn_stop),
-                            MediaButtonReceiver.buildMediaButtonPendingIntent(
-                                this@PlayerService,
-                                PlaybackStateCompat.ACTION_STOP
-                            )
+                        action(
+                            R.drawable.ic_baseline_stop_24,
+                            R.string.btn_stop,
+                            PlaybackStateCompat.ACTION_STOP
                         )
                     )
                     addAction(
-                        NotificationCompat.Action(
+                        action(
                             if (playing) R.drawable.ic_baseline_pause_24 else R.drawable.ic_baseline_play_arrow_24,
-                            getString(if (playing) R.string.btn_pause else R.string.btn_play),
-                            MediaButtonReceiver.buildMediaButtonPendingIntent(
-                                this@PlayerService,
-                                PlaybackStateCompat.ACTION_PLAY_PAUSE
-                            )
+                            if (playing) R.string.btn_pause else R.string.btn_play,
+                            PlaybackStateCompat.ACTION_PLAY_PAUSE
                         )
                     )
                 }
@@ -138,10 +135,10 @@ class PlayerService : Service() {
 
         try {
             player = when (track.map) {
-                null -> LinearPlayer(contentResolver.openInputStream(track.track)!!) { p -> if(p == player) stopSelf() }
+                null -> LinearPlayer(contentResolver.openInputStream(track.track)!!) { p -> if (p == player) stopSelf() }
                 else -> {
                     val (map, sections) = parseTrack(contentResolver, track)
-                    InteractivePlayer(map, sections) { p -> if(p == player) stopSelf() }
+                    InteractivePlayer(map, sections) { p -> if (p == player) stopSelf() }
                 }
             }.apply {
                 play()
@@ -201,21 +198,17 @@ class PlayerService : Service() {
                 )
             )
             addAction(
-                NotificationCompat.Action(
-                    R.drawable.ic_baseline_stop_24, getString(R.string.btn_stop),
-                    MediaButtonReceiver.buildMediaButtonPendingIntent(
-                        this@PlayerService,
-                        PlaybackStateCompat.ACTION_STOP
-                    )
+                action(
+                    R.drawable.ic_baseline_stop_24,
+                    R.string.btn_stop,
+                    PlaybackStateCompat.ACTION_STOP
                 )
             )
             addAction(
-                NotificationCompat.Action(
-                    R.drawable.ic_baseline_pause_24, getString(R.string.btn_pause),
-                    MediaButtonReceiver.buildMediaButtonPendingIntent(
-                        this@PlayerService,
-                        PlaybackStateCompat.ACTION_PLAY_PAUSE
-                    )
+                action(
+                    R.drawable.ic_baseline_pause_24,
+                    R.string.btn_pause,
+                    PlaybackStateCompat.ACTION_PLAY_PAUSE
                 )
             )
             setStyle(
@@ -234,6 +227,12 @@ class PlayerService : Service() {
         builder.setContentIntent(contentIntent)
         return builder
     }
+
+    private fun action(@DrawableRes icon: Int, @StringRes name: Int, action: Long) =
+        NotificationCompat.Action(
+            icon, getString(name),
+            MediaButtonReceiver.buildMediaButtonPendingIntent(this, action)
+        )
 
     inner class LocalBinder : Binder() {
         val service: PlayerService = this@PlayerService
