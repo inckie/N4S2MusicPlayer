@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
+import android.widget.SeekBar
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.documentfile.provider.DocumentFile
@@ -15,8 +16,10 @@ import androidx.preference.PreferenceManager
 import com.damn.n4splayer.R
 import com.damn.n4splayer.Track
 import com.damn.n4splayer.loadTracks
+import com.damn.n4splayer.state.Speed
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import org.greenrobot.eventbus.EventBus
 
 
 class MainActivity : AppCompatActivity() {
@@ -27,6 +30,15 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         findViewById<View>(R.id.btn_open_directory).setOnClickListener { openDirectory() }
+        // hm, no ktx helper yet?
+        findViewById<SeekBar>(R.id.seek_bar).setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener{
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) =
+                EventBus.getDefault().post(Speed(progress.toFloat()))
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
+
+            override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
+        })
         sharedPreferences()
             .getString(PREF_KEY_DIR, null)?.let {
                 reloadTrack(Uri.parse(it))

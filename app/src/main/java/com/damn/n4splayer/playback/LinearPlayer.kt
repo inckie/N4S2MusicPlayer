@@ -9,7 +9,7 @@ import java.io.InputStream
 
 class LinearPlayer(
     private val stream: InputStream,
-    onEnd: () -> Unit
+    onEnd: (IPlayer) -> Unit
 ) : BasePlayer(onEnd) {
 
     @ExperimentalUnsignedTypes

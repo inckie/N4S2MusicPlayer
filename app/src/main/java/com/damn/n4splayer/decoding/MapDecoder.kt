@@ -32,6 +32,7 @@ object MapDecoder {
         val bMin = ifs.readByteUnsigned()
         val bMax = ifs.readByteUnsigned()
         val bNextSection = ifs.readByteUnsigned()
+        override fun toString(): String = "[min: $bMin, max: $bMax, next: $bNextSection]"
     }
 
     @ExperimentalUnsignedTypes

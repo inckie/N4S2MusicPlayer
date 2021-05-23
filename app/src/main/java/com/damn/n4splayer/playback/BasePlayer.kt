@@ -3,7 +3,7 @@ package com.damn.n4splayer.playback
 import android.media.AudioTrack
 import android.util.Log
 
-abstract class BasePlayer(private val onEnd: () -> Unit) : IPlayer {
+abstract class BasePlayer(private val onEnd: (IPlayer) -> Unit) : IPlayer {
 
     private var thread: Thread? = null
 
@@ -15,7 +15,7 @@ abstract class BasePlayer(private val onEnd: () -> Unit) : IPlayer {
         thread = Thread {
             tryLoop()
             thread = null
-            onEnd()
+            onEnd(this)
         }.apply {
             start()
         }

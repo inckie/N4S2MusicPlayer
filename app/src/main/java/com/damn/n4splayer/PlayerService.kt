@@ -115,8 +115,10 @@ class PlayerService : Service() {
     }
 
     private fun tryPlay(track: Track) {
-        player?.stop()
-        player = null
+        player?.let {
+            player = null
+            it.stop()
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val attrs = AudioAttributes.Builder()
@@ -136,10 +138,10 @@ class PlayerService : Service() {
 
         try {
             player = when (track.map) {
-                null -> LinearPlayer(contentResolver.openInputStream(track.track)!!) { stopSelf() }
+                null -> LinearPlayer(contentResolver.openInputStream(track.track)!!) { p -> if(p == player) stopSelf() }
                 else -> {
                     val (map, sections) = parseTrack(contentResolver, track)
-                    InteractivePlayer(map, sections) { stopSelf() }
+                    InteractivePlayer(map, sections) { p -> if(p == player) stopSelf() }
                 }
             }.apply {
                 play()
