@@ -36,6 +36,55 @@ class PlayerService : Service() {
                 super.onStop()
                 stopSelf()
             }
+
+            override fun onPause() {
+                super.onPause()
+                player?.pause(true)
+                notifyState(false)
+            }
+
+            override fun onPlay() {
+                super.onPlay()
+                player?.pause(false)
+                notifyState(true)
+            }
+
+            private fun notifyState(playing: Boolean) {
+                mediaSession.setPlaybackState(
+                    PlaybackStateCompat.Builder()
+                        .setState(
+                            if (playing) PlaybackStateCompat.STATE_PLAYING else PlaybackStateCompat.STATE_PAUSED,
+                            0,
+                            1.0f
+                        )
+                        .setActions(PlaybackStateCompat.ACTION_STOP or PlaybackStateCompat.ACTION_PLAY_PAUSE)
+                        .build()
+                )
+                notification.apply {
+                    clearActions()
+                    addAction(
+                        NotificationCompat.Action(
+                            R.drawable.ic_baseline_stop_24, getString(R.string.btn_stop),
+                            MediaButtonReceiver.buildMediaButtonPendingIntent(
+                                this@PlayerService,
+                                PlaybackStateCompat.ACTION_STOP
+                            )
+                        )
+                    )
+                    addAction(
+                        NotificationCompat.Action(
+                            if (playing) R.drawable.ic_baseline_pause_24 else R.drawable.ic_baseline_play_arrow_24,
+                            getString(if (playing) R.string.btn_pause else R.string.btn_play),
+                            MediaButtonReceiver.buildMediaButtonPendingIntent(
+                                this@PlayerService,
+                                PlaybackStateCompat.ACTION_PLAY_PAUSE
+                            )
+                        )
+                    )
+                }
+                NotificationManagerCompat.from(this@PlayerService)
+                    .notify(NOTIFICATION_ID, notification.build())
+            }
         })
         mediaSession.setFlags(
             MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
@@ -44,7 +93,7 @@ class PlayerService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
-        if(null != MediaButtonReceiver.handleIntent(mediaSession, intent))
+        if (null != MediaButtonReceiver.handleIntent(mediaSession, intent))
             return START_STICKY
         if (null != intent) {
             val cmd = intent.getStringExtra(CMD_NAME)
@@ -59,7 +108,8 @@ class PlayerService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
-        startForeground(NOTIFICATION_ID, buildNotification(track.name))
+        notification = buildNotification(track.name)
+        startForeground(NOTIFICATION_ID, notification.build())
         tryPlay(track)
         return START_STICKY
     }
@@ -94,6 +144,17 @@ class PlayerService : Service() {
             }.apply {
                 play()
             }
+            mediaSession.setMetadata(
+                MediaMetadataCompat.Builder()
+                    .putString(MediaMetadataCompat.METADATA_KEY_TITLE, track.name)
+                    .build()
+            )
+            mediaSession.setPlaybackState(
+                PlaybackStateCompat.Builder()
+                    .setState(PlaybackStateCompat.STATE_PLAYING, 0, 1.0f)
+                    .setActions(PlaybackStateCompat.ACTION_STOP or PlaybackStateCompat.ACTION_PLAY_PAUSE)
+                    .build()
+            )
             mediaSession.isActive = true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to play ${track.name}", e)
@@ -123,19 +184,7 @@ class PlayerService : Service() {
         NotificationManagerCompat.from(this).createNotificationChannel(defaultChannel)
     }
 
-    private fun buildNotification(name: String): Notification {
-        mediaSession.setMetadata(
-            MediaMetadataCompat.Builder()
-                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, name)
-                .build()
-        )
-        mediaSession.setPlaybackState(
-            PlaybackStateCompat.Builder()
-                .setState(PlaybackStateCompat.STATE_PLAYING, 0, 1.0f)
-                .setActions(PlaybackStateCompat.ACTION_STOP)
-                .build()
-        )
-
+    private fun buildNotification(name: String): NotificationCompat.Builder {
         val builder = NotificationCompat.Builder(this, sCHANNEL_PLAYER).apply {
             setOngoing(true)
             setContentTitle(name)
@@ -158,10 +207,19 @@ class PlayerService : Service() {
                     )
                 )
             )
+            addAction(
+                NotificationCompat.Action(
+                    R.drawable.ic_baseline_pause_24, getString(R.string.btn_pause),
+                    MediaButtonReceiver.buildMediaButtonPendingIntent(
+                        this@PlayerService,
+                        PlaybackStateCompat.ACTION_PLAY_PAUSE
+                    )
+                )
+            )
             setStyle(
                 MediaStyle()
                     .setMediaSession(mediaSession.sessionToken)
-                    .setShowActionsInCompactView(0)
+                    .setShowActionsInCompactView(0, 1)
             )
         }
 
@@ -172,21 +230,19 @@ class PlayerService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT
         )
         builder.setContentIntent(contentIntent)
-        return builder.build()
+        return builder
     }
 
     inner class LocalBinder : Binder() {
         val service: PlayerService = this@PlayerService
     }
 
+    private lateinit var notification: NotificationCompat.Builder
     private lateinit var mediaSession: MediaSessionCompat
     private var player: IPlayer? = null
 
-    private val afChangeListener: OnAudioFocusChangeListener = object : OnAudioFocusChangeListener{
-        override fun onAudioFocusChange(focusChange: Int) {
-            // todo: player?.pause/resume
-        }
-    }
+    private val afChangeListener: OnAudioFocusChangeListener =
+        OnAudioFocusChangeListener { focusChange -> player?.pause(focusChange != AudioManager.AUDIOFOCUS_GAIN) }
 
     private val binder: IBinder = LocalBinder()
 

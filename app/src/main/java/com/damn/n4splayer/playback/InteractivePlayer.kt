@@ -31,6 +31,7 @@ class InteractivePlayer(
                 var section = map.sections[map.startSection]
                 while (!Thread.interrupted()) {
                     for (block in sections[map.sections.indexOf(section)]) {
+                        waitPause(track)
                         if (Thread.interrupted())
                             return
                         val bytes = ADPCMDecoder.decode(block)

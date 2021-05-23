@@ -28,6 +28,7 @@ class LinearPlayer(
                 track.play()
                 stream.forEach {
                     it.forEach {
+                        waitPause(track)
                         if (Thread.interrupted()) {
                             return
                         }
@@ -37,4 +38,5 @@ class LinearPlayer(
             }
         }
     }
+
 }
