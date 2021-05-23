@@ -84,7 +84,7 @@ class MainActivity : AppCompatActivity() {
             try {
                 DocumentFile.fromTreeUri(application, directoryUri)?.apply {
                     val childDocuments = listFiles().filter { it.isFile && null != it.name }
-                    val tracks = loadTracks(childDocuments)
+                    val tracks = loadTracks(contentResolver, childDocuments)
                     mTracks.postValue(tracks)
                 }
             } catch (e: Exception) {

@@ -8,5 +8,9 @@ import android.os.Parcelable
 data class Track(
     val name: String,
     val track: Uri,
-    val map: Uri?
+    val map: Uri?,
+    val trackInfo: TrackInfo?
 ) : Parcelable
+
+@Parcelize
+data class TrackInfo(val banner: Uri?, val icon: Uri?) : Parcelable

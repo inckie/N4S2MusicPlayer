@@ -3,10 +3,13 @@ package com.damn.n4splayer
 import android.app.*
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.AudioManager.OnAudioFocusChangeListener
+import android.net.Uri
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
@@ -25,6 +28,7 @@ import com.damn.n4splayer.playback.IPlayer
 import com.damn.n4splayer.playback.InteractivePlayer
 import com.damn.n4splayer.playback.LinearPlayer
 import com.damn.n4splayer.ui.MainActivity
+import java.io.IOException
 
 
 class PlayerService : Service() {
@@ -105,7 +109,7 @@ class PlayerService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
-        notification = buildNotification(track.name)
+        notification = buildNotification(track)
         startForeground(NOTIFICATION_ID, notification.build())
         tryPlay(track)
         return START_STICKY
@@ -143,11 +147,17 @@ class PlayerService : Service() {
             }.apply {
                 play()
             }
-            mediaSession.setMetadata(
-                MediaMetadataCompat.Builder()
-                    .putString(MediaMetadataCompat.METADATA_KEY_TITLE, track.name)
-                    .build()
-            )
+
+            val meta = MediaMetadataCompat.Builder()
+                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, track.name)
+
+            track.trackInfo?.let {
+                // looks like it can not resolve content urls on its own, so we load the bitmaps
+                loadBitmap(it.icon)?.let {
+                    meta.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, it)
+                }
+            }
+            mediaSession.setMetadata(meta.build())
             mediaSession.setPlaybackState(
                 PlaybackStateCompat.Builder()
                     .setState(PlaybackStateCompat.STATE_PLAYING, 0, 1.0f)
@@ -160,6 +170,17 @@ class PlayerService : Service() {
             Toast.makeText(this, "Failed to play ${track.name}: ${e.message}", Toast.LENGTH_LONG)
                 .show()
             stopSelf()
+        }
+    }
+
+    private fun loadBitmap(uri: Uri?): Bitmap? {
+        if(null == uri) return null
+        return try {
+            contentResolver.openInputStream(uri).use {
+                BitmapFactory.decodeStream(it)
+            }
+        } catch (e: IOException) {
+            null
         }
     }
 
@@ -183,10 +204,10 @@ class PlayerService : Service() {
         NotificationManagerCompat.from(this).createNotificationChannel(defaultChannel)
     }
 
-    private fun buildNotification(name: String): NotificationCompat.Builder {
+    private fun buildNotification(track: Track): NotificationCompat.Builder {
         val builder = NotificationCompat.Builder(this, sCHANNEL_PLAYER).apply {
             setOngoing(true)
-            setContentTitle(name)
+            setContentTitle(track.name)
             setSmallIcon(R.mipmap.ic_launcher)
             setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             setOnlyAlertOnce(true)
@@ -216,6 +237,12 @@ class PlayerService : Service() {
                     .setMediaSession(mediaSession.sessionToken)
                     .setShowActionsInCompactView(0, 1)
             )
+        }
+
+        track.trackInfo?.let {
+            loadBitmap(it.icon)?.let {
+                builder.setLargeIcon(it)
+            }
         }
 
         val intent = Intent(this, MainActivity::class.java)
