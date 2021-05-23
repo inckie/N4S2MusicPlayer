@@ -6,10 +6,15 @@ import android.content.Intent
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
+import android.support.v4.media.MediaMetadataCompat
+import android.support.v4.media.session.MediaSessionCompat
+import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.media.app.NotificationCompat.*
+import androidx.media.session.MediaButtonReceiver
 import com.damn.n4splayer.playback.IPlayer
 import com.damn.n4splayer.playback.InteractivePlayer
 import com.damn.n4splayer.playback.LinearPlayer
@@ -21,10 +26,22 @@ class PlayerService : Service() {
     override fun onCreate() {
         super.onCreate()
         createChannels()
+        mediaSession = MediaSessionCompat(this, TAG)
+        mediaSession.setCallback(object : MediaSessionCompat.Callback() {
+            override fun onStop() {
+                super.onStop()
+                stopSelf()
+            }
+        })
+        mediaSession.setFlags(
+            MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
+        )
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
+        if(null != MediaButtonReceiver.handleIntent(mediaSession, intent))
+            return START_STICKY
         if (null != intent) {
             val cmd = intent.getStringExtra(CMD_NAME)
             if (null != cmd) {
@@ -56,6 +73,7 @@ class PlayerService : Service() {
             }.apply {
                 play()
             }
+            mediaSession.isActive = true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to play ${track.name}", e)
             Toast.makeText(this, "Failed to play ${track.name}: ${e.message}", Toast.LENGTH_LONG)
@@ -67,6 +85,7 @@ class PlayerService : Service() {
     override fun onDestroy() {
         player?.stop()
         super.onDestroy()
+        mediaSession.release()
     }
 
     private fun createChannels() {
@@ -84,6 +103,18 @@ class PlayerService : Service() {
     }
 
     private fun buildNotification(name: String): Notification {
+        mediaSession.setMetadata(
+            MediaMetadataCompat.Builder()
+                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, name)
+                .build()
+        )
+        mediaSession.setPlaybackState(
+            PlaybackStateCompat.Builder()
+                .setState(PlaybackStateCompat.STATE_PLAYING, 0, 1.0f)
+                .setActions(PlaybackStateCompat.ACTION_STOP)
+                .build()
+        )
+
         val builder = NotificationCompat.Builder(this, sCHANNEL_PLAYER).apply {
             setOngoing(true)
             setContentTitle(name)
@@ -91,6 +122,26 @@ class PlayerService : Service() {
             setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             setOnlyAlertOnce(true)
             setVibrate(null)
+            setDeleteIntent(
+                MediaButtonReceiver.buildMediaButtonPendingIntent(
+                    this@PlayerService,
+                    PlaybackStateCompat.ACTION_STOP
+                )
+            )
+            addAction(
+                NotificationCompat.Action(
+                    R.drawable.ic_baseline_stop_24, getString(R.string.btn_stop),
+                    MediaButtonReceiver.buildMediaButtonPendingIntent(
+                        this@PlayerService,
+                        PlaybackStateCompat.ACTION_STOP
+                    )
+                )
+            )
+            setStyle(
+                MediaStyle()
+                    .setMediaSession(mediaSession.sessionToken)
+                    .setShowActionsInCompactView(0)
+            )
         }
 
         val intent = Intent(this, MainActivity::class.java)
@@ -100,14 +151,6 @@ class PlayerService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT
         )
         builder.setContentIntent(contentIntent)
-
-        val stopIntent = PendingIntent.getService(
-            this,
-            R.string.btn_stop,
-            Intent(this, PlayerService::class.java).putExtra(CMD_NAME, CMD_STOP),
-            0
-        )
-        builder.addAction(R.drawable.ic_baseline_stop_24, getString(R.string.btn_stop), stopIntent)
         return builder.build()
     }
 
@@ -115,6 +158,7 @@ class PlayerService : Service() {
         val service: PlayerService = this@PlayerService
     }
 
+    private lateinit var mediaSession: MediaSessionCompat
     private var player: IPlayer? = null
     private val binder: IBinder = LocalBinder()
 
