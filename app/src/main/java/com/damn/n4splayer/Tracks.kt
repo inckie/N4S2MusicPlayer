@@ -41,5 +41,6 @@ fun loadTracks(childDocuments: List<DocumentFile>): MutableList<Track> {
     tracks.addAll(muss.map {
         (Track(it.key, it.value, maps[it.key]))
     })
+    tracks.sortBy { it.name }
     return tracks
 }
