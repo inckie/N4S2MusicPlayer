@@ -3,6 +3,10 @@ package com.damn.n4splayer
 import android.app.*
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
+import android.media.AudioManager.OnAudioFocusChangeListener
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
@@ -63,6 +67,23 @@ class PlayerService : Service() {
     private fun tryPlay(track: Track) {
         player?.stop()
         player = null
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val attrs = AudioAttributes.Builder()
+                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                .build()
+            val audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                .setOnAudioFocusChangeListener(afChangeListener)
+                .setAcceptsDelayedFocusGain(false) // todo: support it
+                .setAudioAttributes(attrs)
+                .build()
+            val am = getSystemService(AUDIO_SERVICE) as AudioManager
+            val result = am.requestAudioFocus(audioFocusRequest)
+            if (AudioManager.AUDIOFOCUS_REQUEST_GRANTED != result) {
+                return // todo
+            }
+        }
+
         try {
             player = when (track.map) {
                 null -> LinearPlayer(contentResolver.openInputStream(track.track)!!) { stopSelf() }
@@ -160,6 +181,13 @@ class PlayerService : Service() {
 
     private lateinit var mediaSession: MediaSessionCompat
     private var player: IPlayer? = null
+
+    private val afChangeListener: OnAudioFocusChangeListener = object : OnAudioFocusChangeListener{
+        override fun onAudioFocusChange(focusChange: Int) {
+            // todo: player?.pause/resume
+        }
+    }
+
     private val binder: IBinder = LocalBinder()
 
     override fun onBind(intent: Intent): IBinder = binder
