@@ -1,14 +1,27 @@
 package com.damn.n4splayer.playback
 
-abstract class BasePlayer : IPlayer {
+import android.util.Log
+
+abstract class BasePlayer(private val onEnd: () -> Unit) : IPlayer {
+
     private var thread: Thread? = null
+
     override fun play() {
         stop()
         thread = Thread {
-            loop()
+            tryLoop()
             thread = null
+            onEnd()
         }.apply {
             start()
+        }
+    }
+
+    private fun tryLoop() {
+        try {
+            loop()
+        } catch (e: Exception) {
+            Log.e("BasePlayer", "Exception occurred: ${e.message}", e)
         }
     }
 

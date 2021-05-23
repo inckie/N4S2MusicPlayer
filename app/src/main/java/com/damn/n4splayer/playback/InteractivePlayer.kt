@@ -10,8 +10,9 @@ import com.damn.n4splayer.decoding.MapDecoder
 
 class InteractivePlayer(
     private val map: MapDecoder.MapFile,
-    private val sections: List<List<ByteArray>>
-) : BasePlayer() {
+    private val sections: List<List<ByteArray>>,
+    onEnd: () -> Unit
+) : BasePlayer(onEnd) {
 
     @ExperimentalUnsignedTypes
     override fun loop() {

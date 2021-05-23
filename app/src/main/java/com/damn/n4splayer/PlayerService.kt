@@ -6,13 +6,14 @@ import android.content.Intent
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.damn.n4splayer.playback.IPlayer
 import com.damn.n4splayer.playback.InteractivePlayer
 import com.damn.n4splayer.playback.LinearPlayer
 import com.damn.n4splayer.ui.MainActivity
-import loggersoft.kotlin.streams.toBinaryBufferedStream
 
 
 class PlayerService : Service() {
@@ -38,18 +39,29 @@ class PlayerService : Service() {
             return START_NOT_STICKY
         }
         startForeground(NOTIFICATION_ID, buildNotification(track.name))
-        player?.stop()
-        player = when (track.map) {
-            null -> LinearPlayer(contentResolver.openInputStream(track.track)!!)
-            else -> {
-                val (map, sections) = parseTrack(contentResolver, track)
-                InteractivePlayer(map, sections)
-            }
-        }.apply {
-            play()
-        }
-
+        tryPlay(track)
         return START_STICKY
+    }
+
+    private fun tryPlay(track: Track) {
+        player?.stop()
+        player = null
+        try {
+            player = when (track.map) {
+                null -> LinearPlayer(contentResolver.openInputStream(track.track)!!) { stopSelf() }
+                else -> {
+                    val (map, sections) = parseTrack(contentResolver, track)
+                    InteractivePlayer(map, sections) { stopSelf() }
+                }
+            }.apply {
+                play()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to play ${track.name}", e)
+            Toast.makeText(this, "Failed to play ${track.name}: ${e.message}", Toast.LENGTH_LONG)
+                .show()
+            stopSelf()
+        }
     }
 
     override fun onDestroy() {
@@ -63,20 +75,22 @@ class PlayerService : Service() {
             sCHANNEL_PLAYER,
             getString(R.string.notification_channel),
             NotificationManager.IMPORTANCE_HIGH
-        )
-        defaultChannel.setShowBadge(true)
-        defaultChannel.lockscreenVisibility = Notification.VISIBILITY_PRIVATE
+        ).apply {
+            setShowBadge(true)
+            enableVibration(false)
+            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+        }
         NotificationManagerCompat.from(this).createNotificationChannel(defaultChannel)
     }
 
     private fun buildNotification(name: String): Notification {
         val builder = NotificationCompat.Builder(this, sCHANNEL_PLAYER).apply {
             setOngoing(true)
-            setContentTitle(getString(R.string.app_name))
-            setContentText(name)
+            setContentTitle(name)
             setSmallIcon(R.mipmap.ic_launcher)
             setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             setOnlyAlertOnce(true)
+            setVibrate(null)
         }
 
         val intent = Intent(this, MainActivity::class.java)
@@ -97,15 +111,14 @@ class PlayerService : Service() {
         return builder.build()
     }
 
-    class LocalBinder : Binder() {
-        val service: LocalBinder
-            get() = this@LocalBinder
+    inner class LocalBinder : Binder() {
+        val service: PlayerService = this@PlayerService
     }
 
     private var player: IPlayer? = null
-    private val mBinder: IBinder = LocalBinder()
+    private val binder: IBinder = LocalBinder()
 
-    override fun onBind(intent: Intent): IBinder = mBinder
+    override fun onBind(intent: Intent): IBinder = binder
 
     companion object {
 
@@ -117,6 +130,8 @@ class PlayerService : Service() {
                 )
             )
         }
+
+        private const val TAG = "PlayerService"
 
         private const val NOTIFICATION_ID = 1
         private const val sCHANNEL_PLAYER = "CHANNEL_DEFAULT"

@@ -81,21 +81,6 @@ object Decoder {
     }
 
     @ExperimentalUnsignedTypes
-    private fun decodeSCDlBlock(
-        ifs: StreamInput,
-        result: MutableList<ShortArray>
-    ) {
-        val hdrFile = ASFBlockHeader(ifs)
-        if ("SCDl" == hdrFile.blockId) {
-            val adpcm = ifs.readByteArray(hdrFile.size - 8)
-            val decodeBlock = ADPCMDecoder.decode(adpcm)
-            result.add(decodeBlock)
-        } else {
-            ifs.skip(hdrFile.size - 8L) // 8 is size of ASFBlockHeader
-        }
-    }
-
-    @ExperimentalUnsignedTypes
     fun StreamInput.readByteArray(count: Int): ByteArray {
         val res = ByteArray(count)
         this.readBytes(res)
@@ -111,7 +96,7 @@ object Decoder {
             val hdrSCCl = ASFBlockHeader(ifs)
             val nBlocks = ifs.readInt(ByteOrder.LittleEndian)
             for (i in 0 until nBlocks) {
-                decodeSCDlBlock(ifs, result)
+                parseSCDlBlock(ifs) { result.add(ADPCMDecoder.decode(it)) }
             }
             val end = ASFBlockHeader(ifs)
         } catch (e: EOFException) {
@@ -123,12 +108,11 @@ object Decoder {
     @ExperimentalUnsignedTypes
     private fun parseSCDlBlock(
         ifs: StreamInput,
-        result: MutableList<ByteArray>
+        result: (ByteArray) -> Unit
     ) {
         val hdrFile = ASFBlockHeader(ifs)
         if ("SCDl" == hdrFile.blockId) {
-            val adpcm = ifs.readByteArray(hdrFile.size - 8)
-            result.add(adpcm)
+            result(ifs.readByteArray(hdrFile.size - 8))
         } else {
             ifs.skip(hdrFile.size - 8L) // 8 is size of ASFBlockHeader
         }
@@ -137,6 +121,7 @@ object Decoder {
     @ExperimentalUnsignedTypes
     class SCHlBlock(ifs: StreamInput) {
         val blocks: List<ByteArray>
+
         init {
             val hdrFile = ASFBlockHeader(ifs)
             val phHeader = PTHeader(ifs)
@@ -144,25 +129,22 @@ object Decoder {
             val nBlocks = ifs.readInt(ByteOrder.LittleEndian)
             val result = mutableListOf<ByteArray>()
             for (i in 0 until nBlocks) {
-                parseSCDlBlock(ifs, result)
+                parseSCDlBlock(ifs) { result.add(it) }
             }
             val end = ASFBlockHeader(ifs)
             blocks = result
         }
-
-        fun decode(): List<ShortArray> = blocks.map { ADPCMDecoder.decode(it) }
     }
 
     @ExperimentalUnsignedTypes
-    class CloseableIterator(stream: InputStream)
-        : Iterator<List<ShortArray>>, Closeable {
+    class CloseableIterator(stream: InputStream) : Iterator<List<ShortArray>>, Closeable {
 
         private val _stream = stream.toBinaryBufferedStream(byteOrder = ByteOrder.BigEndian)
 
         private var next: List<ShortArray> = listOf()
 
         override fun hasNext(): Boolean {
-            if(_stream.isClosed || _stream.isEof)
+            if (_stream.isClosed || _stream.isEof)
                 return false
             next = decodeSCHlBlock(_stream)
             return next.isNotEmpty()
