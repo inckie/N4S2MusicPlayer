@@ -1,0 +1,66 @@
+{
+    "lastrock": {
+        "banner": "NFSII_Last_Resort.jpg",
+        "icon": "NFSII_LastResortIcon.png"
+    },
+    "medrock": {
+        "banner": "NFSII_Mediterraneo.jpg",
+        "icon": "NFSII_MediterraneoIcon.png"
+    },
+    "hollyrok": {
+        "banner": "NFSII_Monolithic_Studios.jpg",
+        "icon": "NFSII_MonolithicStudiosIcon.png"
+    },
+    "himrock": {
+        "banner": "NFSII_Mystic_Peaks.jpg",
+        "icon": "NFSII_MysticPeaksIcon.png"
+    },
+    "ncntrock": {
+        "banner": "NFSII_North_Country.jpg",
+        "icon": "NFSII_NorthCountryIcon.png"
+    },
+    "obakrock": {
+        "banner": "NFSII_Outback.jpg",
+        "icon": "NFSII_OutbackIcon.png"
+    },
+    "pacrock": {
+        "banner": "NFSII_Pacific_Spirit.jpg",
+        "icon": "NFSII_PacificSpiritIcon.png"
+    },
+    "pionrock": {
+        "banner": "NFSII_Proving_Grounds.jpg",
+        "icon": "NFSII_ProvingGroundsIcon.png"
+    },
+    "lasttech": {
+        "banner": "NFSII_Last_Resort.jpg",
+        "icon": "NFSII_LastResortIcon.png"
+    },
+    "medtech": {
+        "banner": "NFSII_Mediterraneo.jpg",
+        "icon": "NFSII_MediterraneoIcon.png"
+    },
+    "hollytec": {
+        "banner": "NFSII_Monolithic_Studios.jpg",
+        "icon": "NFSII_MonolithicStudiosIcon.png"
+    },
+    "himtech": {
+        "banner": "NFSII_Mystic_Peaks.jpg",
+        "icon": "NFSII_MysticPeaksIcon.png"
+    },
+    "ncnttech": {
+        "banner": "NFSII_North_Country.jpg",
+        "icon": "NFSII_NorthCountryIcon.png"
+    },
+    "obaktech": {
+        "banner": "NFSII_Outback.jpg",
+        "icon": "NFSII_OutbackIcon.png"
+    },
+    "pactech": {
+        "banner": "NFSII_Pacific_Spirit.jpg",
+        "icon": "NFSII_PacificSpiritIcon.png"
+    },
+    "piontech": {
+        "banner": "NFSII_Proving_Grounds.jpg",
+        "icon": "NFSII_ProvingGroundsIcon.png"
+    }
+}
