@@ -81,22 +81,20 @@ object Decoder {
     }
 
     @ExperimentalUnsignedTypes
-    fun StreamInput.readByteArray(count: Int): ByteArray {
-        val res = ByteArray(count)
-        this.readBytes(res)
-        return res
+    fun StreamInput.readByteArray(count: Int): ByteArray = ByteArray(count).apply {
+        readBytes(this)
     }
 
     @ExperimentalUnsignedTypes
-    private fun decodeSCHlBlock(ifs: StreamInput): List<ShortArray> {
-        val result = mutableListOf<ShortArray>()
+    private fun <T> parseSCHlBlock(ifs: StreamInput, func: (ByteArray) -> T): List<T> {
+        val result = mutableListOf<T>()
         try {
             val hdrFile = ASFBlockHeader(ifs)
             val phHeader = PTHeader(ifs)
             val hdrSCCl = ASFBlockHeader(ifs)
             val nBlocks = ifs.readInt(ByteOrder.LittleEndian)
             for (i in 0 until nBlocks) {
-                parseSCDlBlock(ifs) { result.add(ADPCMDecoder.decode(it)) }
+                parseSCDlBlock(ifs) { result += func(it) }
             }
             val end = ASFBlockHeader(ifs)
         } catch (e: EOFException) {
@@ -106,34 +104,26 @@ object Decoder {
     }
 
     @ExperimentalUnsignedTypes
+    private fun decodeSCHlBlock(ifs: StreamInput): List<ShortArray> {
+        return parseSCHlBlock(ifs) { ADPCMDecoder.decode(it) }
+    }
+
+    @ExperimentalUnsignedTypes
     private fun parseSCDlBlock(
         ifs: StreamInput,
         result: (ByteArray) -> Unit
     ) {
         val hdrFile = ASFBlockHeader(ifs)
-        if ("SCDl" == hdrFile.blockId) {
-            result(ifs.readByteArray(hdrFile.size - 8))
-        } else {
-            ifs.skip(hdrFile.size - 8L) // 8 is size of ASFBlockHeader
+        // 8 is size of ASFBlockHeader
+        when (hdrFile.blockId) {
+            "SCDl" -> result(ifs.readByteArray(hdrFile.size - 8))
+            else -> ifs.skip(hdrFile.size - 8L)
         }
     }
 
     @ExperimentalUnsignedTypes
     class SCHlBlock(ifs: StreamInput) {
-        val blocks: List<ByteArray>
-
-        init {
-            val hdrFile = ASFBlockHeader(ifs)
-            val phHeader = PTHeader(ifs)
-            val hdrSCCl = ASFBlockHeader(ifs)
-            val nBlocks = ifs.readInt(ByteOrder.LittleEndian)
-            val result = mutableListOf<ByteArray>()
-            for (i in 0 until nBlocks) {
-                parseSCDlBlock(ifs) { result.add(it) }
-            }
-            val end = ASFBlockHeader(ifs)
-            blocks = result
-        }
+        val blocks: List<ByteArray> = parseSCHlBlock(ifs) { it }
     }
 
     @ExperimentalUnsignedTypes
