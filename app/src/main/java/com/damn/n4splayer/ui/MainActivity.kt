@@ -103,9 +103,5 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val OPEN_DIRECTORY_REQUEST_CODE = 101
         private const val PREF_KEY_DIR = "tracksDir"
-
-        init {
-            System.loadLibrary("native-lib")
-        }
     }
 }
