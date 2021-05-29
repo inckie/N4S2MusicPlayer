@@ -4,6 +4,7 @@ import loggersoft.kotlin.streams.ByteOrder
 import loggersoft.kotlin.streams.StreamInput
 import loggersoft.kotlin.streams.StringEncoding
 import loggersoft.kotlin.streams.toBinaryBufferedStream
+import java.io.ByteArrayInputStream
 import java.io.Closeable
 import java.io.EOFException
 import java.io.InputStream
@@ -51,7 +52,7 @@ object Decoder {
                         if (0xFF != readByte)
                             ifs.skip(readByte.toLong())
                         else {
-                            ifs.skip(3)
+                            ifs.skip(3) // must be 4 bytes align, but I don't have a position
                             break
                         }
                     }
@@ -87,13 +88,20 @@ object Decoder {
         val result = mutableListOf<T>()
         try {
             val hdrFile = ASFBlockHeader(ifs)
-            val phHeader = PTHeader(ifs)
+            // alignment workaround hacks (we don't have position for that stream)
+            val pt = ByteArray(hdrFile.size - 8) // 8 is size of ASFBlockHeader
+            ifs.readBytes(pt)
+            val ptHeader = PTHeader(ByteArrayInputStream(pt).toBinaryBufferedStream(byteOrder = ByteOrder.BigEndian))
             val hdrSCCl = ASFBlockHeader(ifs)
             val nBlocks = ifs.readInt(ByteOrder.LittleEndian)
+            // we only need to calculate these, since the rest are multiple of 4
+            var pos = hdrFile.size
             for (i in 0 until nBlocks) {
-                parseSCDlBlock(ifs) { result += func(it) }
+                pos += parseSCDlBlock(ifs) { result += func(it) }
             }
             val end = ASFBlockHeader(ifs)
+            // there we need 4 byte align
+            ifs.skip((4 - pos % 4) % 4L)
         } catch (e: EOFException) {
             // ignored
         }
@@ -104,13 +112,14 @@ object Decoder {
     private fun parseSCDlBlock(
         ifs: StreamInput,
         result: (ByteArray) -> Unit
-    ) {
+    ): Int {
         val hdrFile = ASFBlockHeader(ifs)
         // 8 is size of ASFBlockHeader
         when (hdrFile.blockId) {
             "SCDl" -> result(ifs.readByteArray(hdrFile.size - 8))
             else -> ifs.skip(hdrFile.size - 8L)
         }
+        return hdrFile.size
     }
 
     @ExperimentalUnsignedTypes

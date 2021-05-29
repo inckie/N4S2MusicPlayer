@@ -42,10 +42,14 @@ fun loadTracks(
 ): MutableList<Track> {
     val muss = collectFiles(childDocuments, "mus")
     val maps = collectFiles(childDocuments, "map")
+    val asfs = collectFiles(childDocuments, "asf")
     val tracks = mutableListOf<Track>()
     val infos = parse(contentResolver, childDocuments)
     tracks.addAll(muss.map {
-        (Track(it.key, it.value, maps[it.key], infos[it.key.lowercase(Locale.ENGLISH)]))
+        Track(it.key, it.value, maps[it.key], infos[it.key.lowercase(Locale.ENGLISH)])
+    })
+    tracks.addAll(asfs.map {
+        Track(it.key, it.value, null, infos[it.key.lowercase(Locale.ENGLISH)])
     })
     tracks.sortBy { it.name }
     return tracks
