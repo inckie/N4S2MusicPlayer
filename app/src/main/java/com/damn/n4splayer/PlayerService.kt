@@ -269,7 +269,7 @@ class PlayerService : Service() {
     private lateinit var mediaSession: MediaSessionCompat
     private var player: IPlayer? = null
 
-    private val afChangeListener: OnAudioFocusChangeListener =
+    private val afChangeListener: OnAudioFocusChangeListener = // todo: check if it was playing before resuming
         OnAudioFocusChangeListener { focusChange -> player?.pause(focusChange != AudioManager.AUDIOFOCUS_GAIN) }
 
     private val binder: IBinder = LocalBinder()

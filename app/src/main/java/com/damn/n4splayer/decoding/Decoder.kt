@@ -25,10 +25,8 @@ object Decoder {
             while (true) {
                 when (ifs.readByteUnsigned()) {
                     0xFF -> break
-                    0xFE -> {
-                    } // skip
-                    0xFC -> {
-                    } // skip
+                    0xFE -> {} // skip
+                    0xFC -> {} // skip
                     0xFD -> {
                         while (true) {
                             when (ifs.readByteUnsigned()) {
@@ -42,8 +40,7 @@ object Decoder {
                                 0x92 -> dwBytesPerSample = readInt(ifs)
                                 0x80 -> bSplit = readByte(ifs)
                                 0xA0 -> bSplitCompression = readByte(ifs)
-                                0xFF -> {
-                                }
+                                0xFF -> {}
                                 0x8A -> break
                                 else -> ifs.skip(ifs.readByte().toLong())
                             }
@@ -104,11 +101,6 @@ object Decoder {
     }
 
     @ExperimentalUnsignedTypes
-    private fun decodeSCHlBlock(ifs: StreamInput): List<ShortArray> {
-        return parseSCHlBlock(ifs) { ADPCMDecoder.decode(it) }
-    }
-
-    @ExperimentalUnsignedTypes
     private fun parseSCDlBlock(
         ifs: StreamInput,
         result: (ByteArray) -> Unit
@@ -136,7 +128,7 @@ object Decoder {
         override fun hasNext(): Boolean {
             if (_stream.isClosed || _stream.isEof)
                 return false
-            next = decodeSCHlBlock(_stream)
+            next = parseSCHlBlock(_stream) { ADPCMDecoder.decode(it) }
             return next.isNotEmpty()
         }
 

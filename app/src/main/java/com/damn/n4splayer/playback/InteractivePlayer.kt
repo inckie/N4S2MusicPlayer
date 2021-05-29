@@ -36,16 +36,16 @@ class InteractivePlayer(
                 minBufferSize, AudioTrack.MODE_STREAM
             ).use { track: CloseableAudioTrack ->
                 track.play()
-                var section = map.sections[map.startSection]
+                var idx = map.startSection
                 while (!Thread.interrupted()) {
-                    for (block in sections[map.sections.indexOf(section)]) {
+                    for (block in sections[idx]) {
                         waitPause(track)
                         if (Thread.interrupted())
                             return
                         val bytes = ADPCMDecoder.decode(block)
                         track.write(bytes, 0, bytes.size)
                     }
-                    section = map.sections[nextSectionIdx(section.section)]
+                    idx = nextSectionIdx(map.sections[idx].section.msdRecords)
                 }
             }
         } catch (e: Exception) {
@@ -61,19 +61,19 @@ class InteractivePlayer(
     }
 
     @ExperimentalUnsignedTypes
-    private fun nextSectionIdx(section: MapDecoder.MAPSectionDef): Int {
-        if (section.bNumRecords <= 1)
-            return section.msdRecords[0].bNextSection
+    private fun nextSectionIdx(msdRecords:List<MapDecoder.MAPSectionDefRecord>): Int {
+        if (1 == msdRecords.count())
+            return msdRecords[0].bNextSection
         speed?.let { s: Speed ->
-            val rec = section.msdRecords.firstOrNull { it.bMin <= s.speed && s.speed <= it.bMax }
+            val rec = msdRecords.firstOrNull { it.bMin <= s.speed && s.speed <= it.bMax }
             if(null != rec)
                 return rec.bNextSection
-            section.msdRecords.last().apply {
+            msdRecords.last().apply {
                 if(bMax < s.speed)
                     return bNextSection
             }
         }
-        return section.msdRecords[1].bNextSection
+        return msdRecords[1].bNextSection
     }
 
     companion object {
