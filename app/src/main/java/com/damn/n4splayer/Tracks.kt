@@ -43,8 +43,8 @@ fun loadTracks(
     val muss = collectFiles(childDocuments, "mus")
     val maps = collectFiles(childDocuments, "map")
     val asfs = collectFiles(childDocuments, "asf")
+    val infos = parseJson(contentResolver, childDocuments)
     val tracks = mutableListOf<Track>()
-    val infos = parse(contentResolver, childDocuments)
     tracks.addAll(muss.map {
         Track(it.key, it.value, maps[it.key], infos[it.key.lowercase(Locale.ENGLISH)])
     })
@@ -62,7 +62,7 @@ private fun getFile(jsonObject: JSONObject, key: String, files: Map<String, Uri>
     return files[fileName.lowercase(Locale.ENGLISH)]
 }
 
-fun parse(
+private fun parseJson(
     contentResolver: ContentResolver,
     childDocuments: List<DocumentFile>
 ): Map<String, TrackInfo> {
@@ -76,7 +76,7 @@ fun parse(
     val res = mutableMapOf<String, TrackInfo>()
     mapping.keys().forEach { track: String ->
         val jsonObject = mapping.getJSONObject(track)
-        res[track.lowercase(Locale.ENGLISH) ] = TrackInfo(
+        res[track.lowercase(Locale.ENGLISH)] = TrackInfo(
             getFile(jsonObject, "banner", allFiles),
             getFile(jsonObject, "icon", allFiles)
         )
