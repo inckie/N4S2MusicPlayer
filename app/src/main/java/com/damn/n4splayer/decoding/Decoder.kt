@@ -81,7 +81,7 @@ object Decoder {
     }
 
     @ExperimentalUnsignedTypes
-    fun StreamInput.readByteArray(count: Int): ByteArray = ByteArray(count).apply {
+    fun StreamInput.readByteArray(count: Int) = ByteArray(count).apply {
         readBytes(this)
     }
 

@@ -64,14 +64,16 @@ class InteractivePlayer(
     private fun nextSectionIdx(section: MapDecoder.MAPSectionDef): Int {
         if (section.bNumRecords <= 1)
             return section.msdRecords[0].bNextSection
-        else {
-            speed?.let { s: Speed ->
-                val rec = section.msdRecords.firstOrNull { it.bMin <= s.speed && s.speed <= it.bMax }
-                if(null != rec)
-                    return rec.bNextSection
+        speed?.let { s: Speed ->
+            val rec = section.msdRecords.firstOrNull { it.bMin <= s.speed && s.speed <= it.bMax }
+            if(null != rec)
+                return rec.bNextSection
+            section.msdRecords.last().apply {
+                if(bMax < s.speed)
+                    return bNextSection
             }
-            return section.msdRecords[1].bNextSection
         }
+        return section.msdRecords[1].bNextSection
     }
 
     companion object {
