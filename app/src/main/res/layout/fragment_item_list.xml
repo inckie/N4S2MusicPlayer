@@ -6,8 +6,6 @@
     android:name="com.damn.n4splayer.ui.TrackFragment"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:layout_marginLeft="16dp"
-    android:layout_marginRight="16dp"
     app:layoutManager="LinearLayoutManager"
     tools:context=".ui.TrackListFragment"
     tools:listitem="@layout/view_track_list_item" />

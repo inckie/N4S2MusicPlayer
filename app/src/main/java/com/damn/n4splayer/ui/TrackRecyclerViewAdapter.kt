@@ -1,5 +1,8 @@
 package com.damn.n4splayer.ui
 
+import android.graphics.drawable.Drawable
+import android.net.Uri
+import android.util.LruCache
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -13,6 +16,7 @@ import com.damn.n4splayer.databinding.ViewTrackListItemBinding
 class TrackRecyclerViewAdapter(
     owner: LifecycleOwner,
     items: LiveData<List<Track>>,
+    private val iconCache: LruCache<Uri, Drawable>,
     private val selectListener: (Track) -> Unit
 ) : RecyclerView.Adapter<TrackRecyclerViewAdapter.ViewHolder>(), Observer<List<Track>> {
 
@@ -44,8 +48,17 @@ class TrackRecyclerViewAdapter(
 
         fun bind(item: Track) {
             binding.content.text = item.name
-            binding.imgInteractive.visibility = if(null != item.map) View.VISIBLE else View.GONE
+            binding.imgInteractive.visibility = if (null != item.map) View.VISIBLE else View.GONE
             binding.root.setOnClickListener { selectListener(item) }
+            binding.imgIcon.apply {
+                visibility = when (item.trackInfo?.icon) {
+                    null -> View.INVISIBLE
+                    else -> {
+                        setImageDrawable(iconCache.get(item.trackInfo.icon))
+                        View.VISIBLE
+                    }
+                }
+            }
         }
     }
 
