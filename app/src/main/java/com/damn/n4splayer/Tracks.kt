@@ -10,10 +10,16 @@ import org.json.JSONObject
 import java.io.EOFException
 import java.util.*
 
-private fun collectFiles(childDocuments: List<DocumentFile>, ext: String): Map<String, Uri> =
-    childDocuments
-        .filter { it.name!!.contains(ext, true) }
-        .map { it.name!!.substringBefore(".") to it.uri }.toMap()
+// cache since DocumentFile makes a query for every property check
+class DocFile(df: DocumentFile) {
+    val uri = df.uri
+    val name = df.name!!
+}
+
+private fun collectFiles(files: List<DocFile>, ext: String): Map<String, Uri> =
+    files
+        .filter { it.name.contains(ext, true) }
+        .map { it.name.substringBefore(".") to it.uri }.toMap()
 
 @OptIn(ExperimentalUnsignedTypes::class)
 fun parseTrack(
@@ -38,12 +44,12 @@ fun parseTrack(
 
 fun loadTracks(
     contentResolver: ContentResolver,
-    childDocuments: List<DocumentFile>
+    files: List<DocFile>
 ): MutableList<Track> {
-    val muss = collectFiles(childDocuments, "mus")
-    val maps = collectFiles(childDocuments, "map")
-    val asfs = collectFiles(childDocuments, "asf")
-    val infos = parseJson(contentResolver, childDocuments)
+    val muss = collectFiles(files, "mus")
+    val maps = collectFiles(files, "map")
+    val asfs = collectFiles(files, "asf")
+    val infos = parseJson(contentResolver, files)
     val tracks = mutableListOf<Track>()
     tracks.addAll(muss.map {
         Track(it.key, it.value, maps[it.key], infos[it.key.lowercase(Locale.ENGLISH)])
@@ -64,15 +70,15 @@ private fun getFile(jsonObject: JSONObject, key: String, files: Map<String, Uri>
 
 private fun parseJson(
     contentResolver: ContentResolver,
-    childDocuments: List<DocumentFile>
+    childDocuments: List<DocFile>
 ): Map<String, TrackInfo> {
-    val json = childDocuments.firstOrNull { it.name!!.endsWith(".json", true) } ?: return mapOf()
+    val json = childDocuments.firstOrNull { it.name.endsWith(".json", true) } ?: return mapOf()
     val mapping = contentResolver.openInputStream(json.uri)!!.use {
         val readText = it.bufferedReader().readText()
         JSONObject(readText)
     }
 
-    val allFiles = childDocuments.map { it.name!!.lowercase(Locale.ENGLISH) to it.uri }.toMap()
+    val allFiles = childDocuments.map { it.name.lowercase(Locale.ENGLISH) to it.uri }.toMap()
     val res = mutableMapOf<String, TrackInfo>()
     mapping.keys().forEach { track: String ->
         val jsonObject = mapping.getJSONObject(track)

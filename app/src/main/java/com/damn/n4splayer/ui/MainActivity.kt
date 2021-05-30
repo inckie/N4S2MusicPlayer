@@ -13,8 +13,10 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.PreferenceManager
+import com.damn.n4splayer.DocFile
 import com.damn.n4splayer.R
 import com.damn.n4splayer.Track
+import com.damn.n4splayer.databinding.ActivityMainBinding
 import com.damn.n4splayer.loadTracks
 import com.damn.n4splayer.state.Speed
 import kotlinx.coroutines.Dispatchers
@@ -24,14 +26,16 @@ import org.greenrobot.eventbus.EventBus
 
 class MainActivity : AppCompatActivity() {
 
+    private lateinit var mBinding: ActivityMainBinding
     private val mTracks: MutableLiveData<List<Track>> = MutableLiveData()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-        findViewById<View>(R.id.btn_open_directory).setOnClickListener { openDirectory() }
+        mBinding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(mBinding.root)
+        mBinding.btnOpenDirectory.setOnClickListener { openDirectory() }
         // hm, no ktx helper yet?
-        findViewById<SeekBar>(R.id.seek_bar).setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener{
+        mBinding.seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) =
                 EventBus.getDefault().post(Speed(progress.toFloat()))
 
@@ -43,6 +47,21 @@ class MainActivity : AppCompatActivity() {
             .getString(PREF_KEY_DIR, null)?.let {
                 reloadTrack(Uri.parse(it))
             }
+        mBinding.rbInput.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            when (checkedId) {
+                R.id.btn_debug -> toggleDebug(isChecked)
+                R.id.btn_gps -> toggleGps(isChecked)
+            }
+        }
+        mBinding.rbInput.check(R.id.btn_debug)
+    }
+
+    private fun toggleGps(checked: Boolean) {
+
+    }
+
+    private fun toggleDebug(checked: Boolean) {
+        mBinding.seekBar.visibility = if (checked) View.VISIBLE else View.GONE
     }
 
     private fun openDirectory() {
@@ -83,7 +102,7 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch(Dispatchers.Default) {
             try {
                 DocumentFile.fromTreeUri(application, directoryUri)?.apply {
-                    val childDocuments = listFiles().filter { it.isFile && null != it.name }
+                    val childDocuments = listFiles().filter { it.isFile && null != it.name }.map { DocFile(it) }
                     val tracks = loadTracks(contentResolver, childDocuments)
                     mTracks.postValue(tracks)
                 }
