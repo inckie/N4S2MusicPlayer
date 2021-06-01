@@ -1,5 +1,6 @@
 package com.damn.n4splayer.ui
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -19,6 +20,7 @@ import com.damn.n4splayer.DocFile
 import com.damn.n4splayer.R
 import com.damn.n4splayer.Track
 import com.damn.n4splayer.databinding.ActivityMainBinding
+import com.damn.n4splayer.gps.GPSLocationTracker
 import com.damn.n4splayer.loadTracks
 import com.damn.n4splayer.state.Speed
 import kotlinx.coroutines.Dispatchers
@@ -31,6 +33,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mBinding: ActivityMainBinding
 
     private val mTracks: MutableLiveData<List<Track>> = MutableLiveData()
+
+    private val requestPermissionLauncher = createGPSPermissionLauncher {
+        if (it) setGPSEnabled(true)
+        else mBinding.rbInput.check(R.id.btn_debug)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -91,7 +98,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun toggleGps(checked: Boolean) {
+        if (!checked)
+            setGPSEnabled(false)
+        else {
+            if (GPSLocationTracker.hasPermissions(this))
+                setGPSEnabled(true)
+            else
+                requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+    }
 
+    private fun setGPSEnabled(enabled: Boolean) {
+        // todo: set preference flag
     }
 
     private fun toggleDebug(checked: Boolean) {
