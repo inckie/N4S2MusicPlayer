@@ -1,12 +1,14 @@
 package com.damn.n4splayer.ui
 
-import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.widget.SeekBar
 import android.widget.Toast
+import androidx.activity.result.ActivityResultCallback
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.LiveData
@@ -27,13 +29,45 @@ import org.greenrobot.eventbus.EventBus
 class MainActivity : AppCompatActivity() {
 
     private lateinit var mBinding: ActivityMainBinding
+
     private val mTracks: MutableLiveData<List<Track>> = MutableLiveData()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         mBinding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(mBinding.root)
-        mBinding.btnOpenDirectory.setOnClickListener { openDirectory() }
+
+        val selectDir = registerForActivityResult(
+            object : ActivityResultContracts.OpenDocumentTree() {
+                override fun createIntent(context: Context, input: Uri?): Intent =
+                    super.createIntent(context, input)
+                        .setFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+            },
+            ActivityResultCallback { uri ->
+                if (null == uri)
+                    return@ActivityResultCallback
+                grantUriPermission(
+                    packageName,
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+                contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+                reloadTrack(uri)
+                sharedPreferences()
+                    .edit()
+                    .putString(PREF_KEY_DIR, uri.toString())
+                    .apply()
+            })
+
+        mBinding.btnOpenDirectory.setOnClickListener {
+            val uri = sharedPreferences()
+                .getString(PREF_KEY_DIR, null)
+                ?.let { Uri.parse(it) }
+            selectDir.launch(uri)
+        }
         // hm, no ktx helper yet?
         mBinding.seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) =
@@ -64,37 +98,6 @@ class MainActivity : AppCompatActivity() {
         mBinding.seekBar.visibility = if (checked) View.VISIBLE else View.GONE
     }
 
-    private fun openDirectory() {
-        val intent =
-            Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).setFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
-        startActivityForResult(intent, OPEN_DIRECTORY_REQUEST_CODE)
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        when (requestCode) {
-            OPEN_DIRECTORY_REQUEST_CODE -> {
-                if (resultCode != Activity.RESULT_OK)
-                    return
-                val directoryUri = data?.data ?: return
-                grantUriPermission(
-                    packageName,
-                    directoryUri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-                contentResolver.takePersistableUriPermission(
-                    directoryUri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-                reloadTrack(directoryUri)
-                sharedPreferences()
-                    .edit()
-                    .putString(PREF_KEY_DIR, directoryUri.toString())
-                    .apply()
-            }
-        }
-    }
-
     private fun sharedPreferences() =
         PreferenceManager.getDefaultSharedPreferences(applicationContext)
 
@@ -102,7 +105,8 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch(Dispatchers.Default) {
             try {
                 DocumentFile.fromTreeUri(application, directoryUri)?.apply {
-                    val childDocuments = listFiles().filter { it.isFile && null != it.name }.map { DocFile(it) }
+                    val childDocuments =
+                        listFiles().filter { it.isFile && null != it.name }.map { DocFile(it) }
                     val tracks = loadTracks(contentResolver, childDocuments)
                     mTracks.postValue(tracks)
                 }
@@ -120,7 +124,6 @@ class MainActivity : AppCompatActivity() {
     fun getTracks(): LiveData<List<Track>> = mTracks
 
     companion object {
-        private const val OPEN_DIRECTORY_REQUEST_CODE = 101
         private const val PREF_KEY_DIR = "tracksDir"
     }
 }
