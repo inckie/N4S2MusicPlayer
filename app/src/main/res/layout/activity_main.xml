@@ -20,7 +20,18 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center_vertical"
         android:max="100"
-        android:progress="50" />
+        android:progress="50"
+        android:visibility="gone" />
+
+    <SeekBar
+        android:id="@+id/speed_multiplier"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:max="100"
+        android:min="10"
+        android:progress="100"
+        android:visibility="gone" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -47,15 +58,15 @@
             app:singleSelection="true">
 
             <com.google.android.material.button.MaterialButton
-                style="@style/IconOnlyButton"
                 android:id="@+id/btn_gps"
+                style="@style/IconOnlyButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 app:icon="@drawable/ic_baseline_gps_24" />
 
             <com.google.android.material.button.MaterialButton
-                style="@style/IconOnlyButton"
                 android:id="@+id/btn_debug"
+                style="@style/IconOnlyButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 app:icon="@drawable/ic_baseline_debug_24" />

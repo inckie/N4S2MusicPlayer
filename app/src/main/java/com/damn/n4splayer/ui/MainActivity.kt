@@ -6,7 +6,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
-import android.widget.SeekBar
 import android.widget.Toast
 import androidx.activity.result.ActivityResultCallback
 import androidx.activity.result.contract.ActivityResultContracts
@@ -15,13 +14,13 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
-import androidx.preference.PreferenceManager
 import com.damn.n4splayer.DocFile
 import com.damn.n4splayer.R
 import com.damn.n4splayer.Track
 import com.damn.n4splayer.databinding.ActivityMainBinding
 import com.damn.n4splayer.gps.GPSLocationTracker
 import com.damn.n4splayer.loadTracks
+import com.damn.n4splayer.state.Settings
 import com.damn.n4splayer.state.Speed
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -44,6 +43,8 @@ class MainActivity : AppCompatActivity() {
         mBinding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(mBinding.root)
 
+        val preferences = Settings.sharedPreferences(this)
+
         val selectDir = registerForActivityResult(
             object : ActivityResultContracts.OpenDocumentTree() {
                 override fun createIntent(context: Context, input: Uri?): Intent =
@@ -63,38 +64,44 @@ class MainActivity : AppCompatActivity() {
                     Intent.FLAG_GRANT_READ_URI_PERMISSION
                 )
                 reloadTrack(uri)
-                sharedPreferences()
+                preferences
                     .edit()
-                    .putString(PREF_KEY_DIR, uri.toString())
+                    .putString(Settings.KEY_TRACKS_DIR, uri.toString())
                     .apply()
             })
 
         mBinding.btnOpenDirectory.setOnClickListener {
-            val uri = sharedPreferences()
-                .getString(PREF_KEY_DIR, null)
+            val uri = preferences
+                .getString(Settings.KEY_TRACKS_DIR, null)
                 ?.let { Uri.parse(it) }
             selectDir.launch(uri)
         }
-        // hm, no ktx helper yet?
-        mBinding.seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) =
-                EventBus.getDefault().post(Speed(progress.toFloat()))
 
-            override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
+        mBinding.seekBar.onProgressChanged { progress, _ ->
+            EventBus.getDefault().post(Speed(progress.toFloat()))
+        }
 
-            override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
-        })
-        sharedPreferences()
-            .getString(PREF_KEY_DIR, null)?.let {
-                reloadTrack(Uri.parse(it))
-            }
+        mBinding.speedMultiplier.progress =
+            (100 * preferences.getFloat(Settings.KEY_SPEED_SCALE, 1.0f)).toInt()
+        mBinding.speedMultiplier.onProgressChanged { progress, _ ->
+            preferences.edit().putFloat(Settings.KEY_SPEED_SCALE, 100.0f / progress.coerceAtLeast(10)).apply()
+        }
+
         mBinding.rbInput.addOnButtonCheckedListener { _, checkedId, isChecked ->
             when (checkedId) {
                 R.id.btn_debug -> toggleDebug(isChecked)
                 R.id.btn_gps -> toggleGps(isChecked)
             }
         }
-        mBinding.rbInput.check(R.id.btn_debug)
+
+        mBinding.rbInput.check(
+            if (preferences.getBoolean(Settings.KEY_GPS, false))
+                R.id.btn_gps else R.id.btn_debug
+        )
+
+        preferences.getString(Settings.KEY_TRACKS_DIR, null)?.let {
+            reloadTrack(Uri.parse(it))
+        }
     }
 
     private fun toggleGps(checked: Boolean) {
@@ -109,15 +116,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setGPSEnabled(enabled: Boolean) {
-        // todo: set preference flag
+        Settings.sharedPreferences(this).edit().putBoolean(Settings.KEY_GPS, enabled).apply()
+        mBinding.speedMultiplier.visibility = if (enabled) View.VISIBLE else View.GONE
     }
 
     private fun toggleDebug(checked: Boolean) {
         mBinding.seekBar.visibility = if (checked) View.VISIBLE else View.GONE
     }
-
-    private fun sharedPreferences() =
-        PreferenceManager.getDefaultSharedPreferences(applicationContext)
 
     private fun reloadTrack(directoryUri: Uri) {
         lifecycleScope.launch(Dispatchers.Default) {
@@ -141,7 +146,5 @@ class MainActivity : AppCompatActivity() {
 
     fun getTracks(): LiveData<List<Track>> = mTracks
 
-    companion object {
-        private const val PREF_KEY_DIR = "tracksDir"
-    }
 }
+

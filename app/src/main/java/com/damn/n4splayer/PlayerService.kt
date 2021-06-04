@@ -3,8 +3,10 @@ package com.damn.n4splayer
 import android.app.*
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.location.Location
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
@@ -24,14 +26,18 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.media.app.NotificationCompat.*
 import androidx.media.session.MediaButtonReceiver
+import com.damn.n4splayer.gps.GPSLocationTracker
 import com.damn.n4splayer.playback.IPlayer
 import com.damn.n4splayer.playback.InteractivePlayer
 import com.damn.n4splayer.playback.LinearPlayer
+import com.damn.n4splayer.state.Settings
+import com.damn.n4splayer.state.Speed
 import com.damn.n4splayer.ui.MainActivity
+import org.greenrobot.eventbus.EventBus
 import java.io.IOException
 
 
-class PlayerService : Service() {
+class PlayerService : Service(), SharedPreferences.OnSharedPreferenceChangeListener {
 
     override fun onCreate() {
         super.onCreate()
@@ -90,6 +96,18 @@ class PlayerService : Service() {
         mediaSession.setFlags(
             MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
         )
+
+        GPSTracker = GPSLocationTracker(this,
+            object : GPSLocationTracker.IListener {
+                override fun positionUpdated(location: Location) =
+                    EventBus.getDefault().post(Speed(location.speed * multiplier * MS_TO_KH))
+            })
+
+        Settings.sharedPreferences(this).apply {
+            registerOnSharedPreferenceChangeListener(this@PlayerService)
+            multiplier = getFloat(Settings.KEY_SPEED_SCALE, multiplier)
+            toggleGPS(getBoolean(Settings.KEY_GPS, false))
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -174,7 +192,7 @@ class PlayerService : Service() {
     }
 
     private fun loadBitmap(uri: Uri?): Bitmap? {
-        if(null == uri) return null
+        if (null == uri) return null
         return try {
             contentResolver.openInputStream(uri).use {
                 BitmapFactory.decodeStream(it)
@@ -185,6 +203,7 @@ class PlayerService : Service() {
     }
 
     override fun onDestroy() {
+        Settings.sharedPreferences(this).unregisterOnSharedPreferenceChangeListener(this)
         player?.stop()
         super.onDestroy()
         mediaSession.release()
@@ -261,6 +280,28 @@ class PlayerService : Service() {
             MediaButtonReceiver.buildMediaButtonPendingIntent(this, action)
         )
 
+    override fun onSharedPreferenceChanged(
+        sharedPreferences: SharedPreferences,
+        key: String
+    ) {
+        sharedPreferences.apply {
+            when (key) {
+                Settings.KEY_GPS -> toggleGPS(getBoolean(Settings.KEY_GPS, false))
+                Settings.KEY_SPEED_SCALE -> {
+                    multiplier = getFloat(Settings.KEY_SPEED_SCALE, multiplier)
+                    GPSTracker.lastLocation?.let {
+                        EventBus.getDefault().post(Speed(it.speed * multiplier * MS_TO_KH))
+                    }
+                }
+            }
+        }
+    }
+
+    private fun toggleGPS(gps: Boolean) {
+        if (gps) GPSTracker.start()
+        else GPSTracker.stop()
+    }
+
     inner class LocalBinder : Binder() {
         val service: PlayerService = this@PlayerService
     }
@@ -269,8 +310,13 @@ class PlayerService : Service() {
     private lateinit var mediaSession: MediaSessionCompat
     private var player: IPlayer? = null
 
-    private val afChangeListener: OnAudioFocusChangeListener = // todo: check if it was playing before resuming
+    private val afChangeListener: OnAudioFocusChangeListener =
+        // todo: check if it was playing before resuming
         OnAudioFocusChangeListener { focusChange -> player?.pause(focusChange != AudioManager.AUDIOFOCUS_GAIN) }
+
+    private lateinit var GPSTracker: GPSLocationTracker
+
+    private var multiplier: Float = 1.0f
 
     private val binder: IBinder = LocalBinder()
 
@@ -295,5 +341,8 @@ class PlayerService : Service() {
         private const val CMD_STOP = "CMD_STOP"
 
         private const val ARG_TRACK = "ARG_TRACK"
+
+        private const val MS_TO_KH = 3.6f
     }
+
 }
