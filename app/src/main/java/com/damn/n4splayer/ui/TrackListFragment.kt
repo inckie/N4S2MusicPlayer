@@ -28,8 +28,8 @@ class TrackListFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         val binding = FragmentItemListBinding.inflate(inflater, container, false)
-        val iconCache = object : LruCache<Uri, Drawable>(16) { // only 8 is really needed
-            override fun create(key: Uri): Drawable =
+        val iconCache = object : LruCache<Uri, Drawable?>(16) { // only 8 is really needed
+            override fun create(key: Uri): Drawable? =
                 inflater.context.contentResolver.openInputStream(key).use {
                     return Drawable.createFromStream(it, key.toString())
                 }
@@ -37,8 +37,8 @@ class TrackListFragment : Fragment() {
         binding.list.adapter = TrackRecyclerViewAdapter(
             this@TrackListFragment,
             mTracks,
-            iconCache,
-            { play(it) })
+            iconCache
+        ) { play(it) }
         return binding.root
     }
 

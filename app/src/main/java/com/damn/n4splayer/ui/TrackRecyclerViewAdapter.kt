@@ -16,7 +16,7 @@ import com.damn.n4splayer.databinding.ViewTrackListItemBinding
 class TrackRecyclerViewAdapter(
     owner: LifecycleOwner,
     items: LiveData<List<Track>>,
-    private val iconCache: LruCache<Uri, Drawable>,
+    private val iconCache: LruCache<Uri, Drawable?>,
     private val selectListener: (Track) -> Unit
 ) : RecyclerView.Adapter<TrackRecyclerViewAdapter.ViewHolder>(), Observer<List<Track>> {
 
